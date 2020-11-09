@@ -39,7 +39,7 @@
 #  rake -T
 #
 # Now you're Jekyll with rake!
-require 'jekyll'
+
 $use_bundle_exec = false
 $awestruct_cmd = nil
 $antora_config = "playbook.yml"
