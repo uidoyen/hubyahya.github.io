@@ -39,6 +39,10 @@
 #  rake -T
 #
 # Now you're Jekyll with rake!
+require "rubygems"
+require "tmpdir"
+require "bundler/setup"
+require "jekyll"
 
 $use_bundle_exec = false
 $awestruct_cmd = nil
@@ -63,40 +67,64 @@ task :push do
   system 'git push origin website-migration'
 end
 
+task :generate do
+  Jekyll::Site.new(Jekyll.configuration({
+    "source"      => ".",
+    "destination" => "_site"
+  })).process
+end
+
 desc 'Generate the site and deploy to production branch using local dev environment'
 task :deploy => [:check, :push] do
   run_antora
-  system "jekyll build" or raise "Jekyll build failed!"
+  system "jekyll build" or raise "Jekyll build failed"
 end
 
 desc 'Generate site using Travis CI and, if not a pull request, publish site to production (GitHub Pages).  Antora content will be built by Travis directly rather than this task.'
-task :travis => :check do
+task :travis => [:check, :generate] do
+  
   # if this is a pull request, do a simple build of the site and stop
   if ENV['TRAVIS_PULL_REQUEST'].to_s.to_i > 0
     msg 'Building pull request using production profile...'
+    Jekyll::Site.new(Jekyll.configuration({
+      "source"      => ".",
+      "destination" => "_site"
+    })).process
+
     system "jekyll build" or raise "Jekyll build failed"
     next
   end
 
-  repo = %x(git config remote.origin.url).gsub(/^git:/, 'https:')
-  deploy_branch = 'master'
-  msg "Building '#{deploy_branch}' branch using production profile..."
-  system "git remote set-url --push origin #{repo}"
-  system "git remote set-branches --add origin #{deploy_branch}"
-  system 'git fetch -q'
-  system "git config user.name '#{ENV['GIT_NAME']}'"
-  system "git config user.email '#{ENV['GIT_EMAIL']}'"
-  system 'git config credential.helper "store --file=.git/credentials"'
-  # CREDENTIALS assigned by a Travis CI Secure Environment Variable
-  # see http://awestruct.org/auto-deploy-to-github-pages/
-  # and http://about.travis-ci.org/docs/user/build-configuration/#Secure-environment-variables for details
-  File.open('.git/credentials', 'w') do |f|
-    f.write("https://#{ENV['GH_TOKEN']}:x-oauth-basic@github.com")
+  Dir.mktmpdir do |tmp|
+    cp_r "_site/.", tmp
+    pwd = Dir.pwd
+    Dir.chdir tmp
+    File.open(".nojekyll", "wb") { |f| f.puts("Site généré localement.") }
+
+    repo = %x(git config remote.origin.url).gsub(/^git:/, 'https:')
+    deploy_branch = 'master'
+    msg "Building '#{deploy_branch}' branch using production profile..."
+    system "git remote set-url --push origin #{repo}"
+    system "git remote set-branches --add origin #{deploy_branch}"
+    system 'git fetch -q'
+    system "git config user.name '#{ENV['GIT_NAME']}'"
+    system "git config user.email '#{ENV['GIT_EMAIL']}'"
+    # system 'git config credential.helper "store --file=.git/credentials"'
+
+    # CREDENTIALS assigned by a Travis CI Secure Environment Variable
+    # see http://awestruct.org/auto-deploy-to-github-pages/
+    # and http://about.travis-ci.org/docs/user/build-configuration/#Secure-environment-variables for details
+    # File.open('.git/credentials', 'w') do |f|
+    #   f.write("https://#{ENV['GH_TOKEN']}:x-oauth-basic@github.com")
+    # end
+
+    system "git branch #{deploy_branch} origin/#{deploy_branch}"
+    system "git status"
+  
+    # # system "jekyll build" or raise "Jekyll build failed"
+    # File.delete '.git/credentials'
+    Dir.chdir pwd
   end
-  system "git branch #{deploy_branch} origin/#{deploy_branch}"
-  system "git status"
-  system "jekyll build" or raise "Jekyll build failed"
-  File.delete '.git/credentials'
 end
 
 desc 'Clean out generated site and temporary files'
@@ -184,5 +212,31 @@ def msg(text, level = :info)
     puts "\e[31m#{text}\e[0m"
   else
     puts "\e[33m#{text}\e[0m"
+  end
+end
+task :generate do
+  Jekyll::Site.new(Jekyll.configuration({
+    "source"      => ".",
+    "destination" => "_site"
+  })).process
+end
+
+desc "Génération et publication des fichiers sur GitHub"
+task :publish => [:generate] do
+  Dir.mktmpdir do |tmp|
+    cp_r "_site/.", tmp
+    
+    pwd = Dir.pwd
+    Dir.chdir tmp
+    File.open(".nojekyll", "wb") { |f| f.puts("Site généré localement.") }
+    
+    system "git init"
+    system "git add ."
+    message = "Site mis à jour le #{Time.now.utc}"
+    system "git commit -m #{message.inspect}"
+    system "git remote add origin git@github.com:#{GITHUB_REPONAME}.git"
+    system "git push origin master:refs/heads/gh-pages --force"
+
+    Dir.chdir pwd
   end
 end
