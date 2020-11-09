@@ -66,7 +66,7 @@ end
 desc 'Generate the site and deploy to production branch using local dev environment'
 task :deploy => [:check, :push] do
   run_antora
-  system "jekyll build" or raise "Jekyll build failed"
+  system "jekyll build" or raise "Jekyll build failed!"
 end
 
 desc 'Generate site using Travis CI and, if not a pull request, publish site to production (GitHub Pages).  Antora content will be built by Travis directly rather than this task.'
