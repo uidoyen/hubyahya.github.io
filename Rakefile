@@ -106,6 +106,8 @@ task :travis => :check do
   end
   system "git branch #{deploy_branch} origin/#{deploy_branch}"
   system "git status"
+  system "bundle update" or raise "Jekyll build failed"
+  system "bundle install" or raise "Jekyll build failed"
   system "bundle exec jekyll build" or raise "Jekyll build failed"
   File.delete '.git/credentials'
 end
