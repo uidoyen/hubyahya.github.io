@@ -67,13 +67,6 @@ task :push do
   system 'git push origin website-migration'
 end
 
-task :generate do
-  Jekyll::Site.new(Jekyll.configuration({
-    "source"      => ".",
-    "destination" => "_site"
-  })).process
-end
-
 desc 'Generate the site and deploy to production branch using local dev environment'
 task :deploy => [:check, :push] do
   run_antora
@@ -183,11 +176,6 @@ def run_antora()
   end
 end
 
-# Execute Jekyll
-# def run_jekyll()
-#   system "#{$use_bundle_exec ? 'bundle exec ' : ''}jekyll serve --host 0.0.0.0" or raise "Jekyll build failed"
-# end
-
 # Print a message to STDOUT
 def msg(text, level = :info)
   case level
@@ -196,10 +184,4 @@ def msg(text, level = :info)
   else
     puts "\e[33m#{text}\e[0m"
   end
-end
-task :generate do
-  Jekyll::Site.new(Jekyll.configuration({
-    "source"      => ".",
-    "destination" => "_site"
-  })).process
 end
