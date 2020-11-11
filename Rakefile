@@ -106,8 +106,6 @@ task :travis => :check do
   end
   system "git branch #{deploy_branch} origin/#{deploy_branch}"
   system "git status"
-  system "bundle update" or raise "Jekyll build failed"
-  system "bundle install" or raise "Jekyll build failed"
   system "bundle exec jekyll build" or raise "Jekyll build failed"
   File.delete '.git/credentials'
 end
@@ -204,24 +202,4 @@ task :generate do
     "source"      => ".",
     "destination" => "_site"
   })).process
-end
-
-desc "Génération et publication des fichiers sur GitHub"
-task :publish => [:generate] do
-  Dir.mktmpdir do |tmp|
-    cp_r "_site/.", tmp
-    
-    pwd = Dir.pwd
-    Dir.chdir tmp
-    File.open(".nojekyll", "wb") { |f| f.puts("Site généré localement.") }
-    
-    system "git init"
-    system "git add ."
-    message = "Site mis à jour le #{Time.now.utc}"
-    system "git commit -m #{message.inspect}"
-    system "git remote add origin git@github.com:#{GITHUB_REPONAME}.git"
-    system "git push origin master:refs/heads/gh-pages --force"
-
-    Dir.chdir pwd
-  end
 end
