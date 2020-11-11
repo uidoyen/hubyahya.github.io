@@ -85,7 +85,7 @@ task :travis => :check do
   # if this is a pull request, do a simple build of the site and stop
   if ENV['TRAVIS_PULL_REQUEST'].to_s.to_i > 0
     msg 'Building pull request using production profile...'
-    run_awestruct '-P production -g'
+    system "bundle exec jekyll build" or raise "Jekyll build failed"
     next
   end
 
