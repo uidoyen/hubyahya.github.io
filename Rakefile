@@ -44,7 +44,7 @@ require "tmpdir"
 require "bundler/setup"
 require "jekyll"
 
-$use_bundle_exec = false
+$use_bundle_exec = true
 $awestruct_cmd = nil
 $antora_config = "playbook.yml"
 task :default => :preview
