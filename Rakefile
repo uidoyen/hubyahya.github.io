@@ -44,8 +44,7 @@ require "tmpdir"
 require "bundler/setup"
 require "jekyll"
 
-$use_bundle_exec = true
-$awestruct_cmd = nil
+$use_bundle_exec = false
 $antora_config = "playbook.yml"
 task :default => :preview
 
@@ -67,13 +66,6 @@ task :push do
   system 'git push origin website-migration'
 end
 
-task :generate do
-  Jekyll::Site.new(Jekyll.configuration({
-    "source"      => ".",
-    "destination" => "_site"
-  })).process
-end
-
 desc 'Generate the site and deploy to production branch using local dev environment'
 task :deploy => [:check, :push] do
   run_antora
@@ -85,7 +77,7 @@ task :travis => :check do
   # if this is a pull request, do a simple build of the site and stop
   if ENV['TRAVIS_PULL_REQUEST'].to_s.to_i > 0
     msg 'Building pull request using production profile...'
-    run_awestruct '-P production -g'
+    system "bundle exec jekyll build" or raise "Jekyll build failed"
     next
   end
 
@@ -142,8 +134,6 @@ task :check => :init do
     if which('jekyl').nil?
       msg 'Could not find jekyl.', :warn
       msg 'Run `rake setup` to install from RubyGems.'
-      # Enable once the rubygem-awestruct RPM is available
-      #msg 'Run `sudo yum install rubygem-awestruct` to install via RPM. (Fedora >= 18)'
       exit 1
     else
       $use_bundle_exec = false
@@ -183,11 +173,6 @@ def run_antora()
   end
 end
 
-# Execute Jekyll
-# def run_jekyll()
-#   system "#{$use_bundle_exec ? 'bundle exec ' : ''}jekyll serve --host 0.0.0.0" or raise "Jekyll build failed"
-# end
-
 # Print a message to STDOUT
 def msg(text, level = :info)
   case level
@@ -195,31 +180,5 @@ def msg(text, level = :info)
     puts "\e[31m#{text}\e[0m"
   else
     puts "\e[33m#{text}\e[0m"
-  end
-end
-task :generate do
-  Jekyll::Site.new(Jekyll.configuration({
-    "source"      => ".",
-    "destination" => "_site"
-  })).process
-end
-
-desc "Génération et publication des fichiers sur GitHub"
-task :publish => [:generate] do
-  Dir.mktmpdir do |tmp|
-    cp_r "_site/.", tmp
-    
-    pwd = Dir.pwd
-    Dir.chdir tmp
-    File.open(".nojekyll", "wb") { |f| f.puts("Site généré localement.") }
-    
-    system "git init"
-    system "git add ."
-    message = "Site mis à jour le #{Time.now.utc}"
-    system "git commit -m #{message.inspect}"
-    system "git remote add origin git@github.com:#{GITHUB_REPONAME}.git"
-    system "git push origin master:refs/heads/gh-pages --force"
-
-    Dir.chdir pwd
   end
 end
